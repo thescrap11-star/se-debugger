@@ -4,8 +4,9 @@
 // 3. Return: fixed script + explanation of changes.
 
 // ===== CONFIG =====
-const AI_ENDPOINT = "https://example.com"; // <-- replace with your endpoint
-const AI_API_KEY = "YOUR_API_KEY_HERE";                                         // <-- replace with your API key
+const AI_ENDPOINT = "https://github.com"; 
+const AI_API_KEY = "9h3";                                         
+const AI_MODEL_ID = "se-debugger";
 
 function buildPrompt(pbCode, errorText) {
   const system = `
@@ -50,7 +51,7 @@ Task:
 
 async function callAI(prompt) {
   const body = {
-    model: "your-model-id", // <-- Replace with your deployment model ID
+    model: AI_MODEL_ID, 
     messages: [
       { role: "system", content: prompt.system },
       { role: "user", content: prompt.user }
@@ -58,7 +59,6 @@ async function callAI(prompt) {
     temperature: 0.2
   };
 
-  // Uses native global fetch (Standard in Node.js 18+ and browsers)
   const res = await fetch(AI_ENDPOINT, {
     method: "POST",
     headers: {
@@ -76,22 +76,28 @@ async function callAI(prompt) {
   return data.choices?.[0]?.message?.content || "";
 }
 
-// Fail-safe parser using standard string manipulation
+// Fixed parser with correct array indexing for safe extraction
 function parseAIResponse(text) {
   let fixedScript = "";
   let explanation = "";
 
   // Extract fixed script safely
   if (text.includes("--- FIXED_SCRIPT_START ---") && text.includes("--- FIXED_SCRIPT_END ---")) {
-    fixedScript = text.split("--- FIXED_SCRIPT_START ---")[1].split("--- FIXED_SCRIPT_END ---")[0].trim();
-    
-    // Defensive strip: remove markdown code block wrappers if the AI accidentally adds them
-    fixedScript = fixedScript.replace(/^```csharp\s*|^```\s*|```$/gi, "").trim();
+    const parts = text.split("--- FIXED_SCRIPT_START ---");
+    if (parts.length > 1) {
+      fixedScript = parts[1].split("--- FIXED_SCRIPT_END ---")[0].trim();
+      
+      // Defensive strip: remove markdown code block wrappers if the AI accidentally adds them
+      fixedScript = fixedScript.replace(/^```csharp\s*|^```\s*|```$/gi, "").trim();
+    }
   }
 
   // Extract explanation safely
   if (text.includes("--- EXPLANATION_START ---") && text.includes("--- EXPLANATION_END ---")) {
-    explanation = text.split("--- EXPLANATION_START ---")[1].split("--- EXPLANATION_END ---")[0].trim();
+    const parts = text.split("--- EXPLANATION_START ---");
+    if (parts.length > 1) {
+      explanation = parts[1].split("--- EXPLANATION_END ---")[0].trim();
+    }
   }
 
   return { fixedScript, explanation };
