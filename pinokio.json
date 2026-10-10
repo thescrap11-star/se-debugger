@@ -1,0 +1,15 @@
+{
+  "title": "SE Alert Script Debugger",
+  "description": "AI-powered C# debugging assistant for Space Engineers programmable blocks",
+  "icon": "icon.png",
+  "menu": [
+    {
+      "html": "Install",
+      "href": "install.json"
+    },
+    {
+      "html": "Start",
+      "href": "start.json"
+    }
+  ]
+}
