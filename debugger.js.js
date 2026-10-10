@@ -4,13 +4,12 @@
 // 3. Return: fixed script + explanation of changes.
 
 // ===== CONFIG =====
-const AI_ENDPOINT = "https://your-ai-endpoint.example.com/v1/chat/completions"; // <-- replace with your endpoint
-const AI_API_KEY = "YOUR_API_KEY_HERE"; // <-- replace with your API key
+const AI_ENDPOINT = "https://example.com"; // <-- replace with your endpoint
+const AI_API_KEY = "YOUR_API_KEY_HERE";                                         // <-- replace with your API key
 
 function buildPrompt(pbCode, errorText) {
   const system = `
-You are an expert Space Engineers Programmable Block (PB) scripter.
-You know:
+You are an expert Space Engineers Programmable Block (PB) scripter. You know:
 - PB scripts are C# and must compile under the in-game compiler.
 - Typical structure: public Program(), public void Main(string argument, UpdateType updateSource), optional Save().
 - No external assemblies beyond what Space Engineers exposes.
@@ -23,8 +22,8 @@ Your job:
 4. Keep the original intent and logic as much as possible.
 5. Optimize for PB limits (no LINQ, avoid heavy allocations in Main, etc.).
 6. Return ONLY:
-A) The full corrected script.
-B) A short explanation of what you changed and why.
+   A) The full corrected script.
+   B) A short explanation of what you changed and why.
 
 - Output in this exact format:
 --- FIXED_SCRIPT_START ---
@@ -50,10 +49,8 @@ Task:
 }
 
 async function callAI(prompt) {
-  const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
-  
   const body = {
-    model: "your-model-id",
+    model: "your-model-id", // <-- Replace with your deployment model ID
     messages: [
       { role: "system", content: prompt.system },
       { role: "user", content: prompt.user }
@@ -61,6 +58,7 @@ async function callAI(prompt) {
     temperature: 0.2
   };
 
+  // Uses native global fetch (Standard in Node.js 18+ and browsers)
   const res = await fetch(AI_ENDPOINT, {
     method: "POST",
     headers: {
@@ -75,18 +73,28 @@ async function callAI(prompt) {
   }
 
   const data = await res.json();
-  const content = data.choices?.[0]?.message?.content || "";
-  return content;
+  return data.choices?.[0]?.message?.content || "";
 }
 
+// Fail-safe parser using standard string manipulation
 function parseAIResponse(text) {
-  const scriptMatch = text.match(/--- FIXED_SCRIPT_START ---([\s\S]*?)--- FIXED_SCRIPT_END ---/);
-  const explanationMatch = text.match(/--- EXPLANATION_START ---([\s\S]*?)--- EXPLANATION_END ---/);
+  let fixedScript = "";
+  let explanation = "";
 
-  return {
-    fixedScript: scriptMatch ? scriptMatch[1].trim() : "",
-    explanation: explanationMatch ? explanationMatch[1].trim() : ""
-  };
+  // Extract fixed script safely
+  if (text.includes("--- FIXED_SCRIPT_START ---") && text.includes("--- FIXED_SCRIPT_END ---")) {
+    fixedScript = text.split("--- FIXED_SCRIPT_START ---")[1].split("--- FIXED_SCRIPT_END ---")[0].trim();
+    
+    // Defensive strip: remove markdown code block wrappers if the AI accidentally adds them
+    fixedScript = fixedScript.replace(/^```csharp\s*|^```\s*|```$/gi, "").trim();
+  }
+
+  // Extract explanation safely
+  if (text.includes("--- EXPLANATION_START ---") && text.includes("--- EXPLANATION_END ---")) {
+    explanation = text.split("--- EXPLANATION_START ---")[1].split("--- EXPLANATION_END ---")[0].trim();
+  }
+
+  return { fixedScript, explanation };
 }
 
 async function debugAndFixPB({ pbCode, errorText }) {
@@ -105,6 +113,4 @@ async function debugAndFixPB({ pbCode, errorText }) {
   return { fixedScript, explanation };
 }
 
-module.exports = {
-  debugAndFixPB
-};
+module.exports = { debugAndFixPB };
